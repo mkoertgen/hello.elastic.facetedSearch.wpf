@@ -24,7 +24,7 @@ namespace HelloFacets
             Aggregations.CheckedChanged += (sender, args) => DoSearch();
 
             // ReSharper disable once DoNotCallOverridableMethodsInConstructor
-            DisplayName = "Hello Content Facets";
+            DisplayName = "Hello Faceted Search";
         }
 
         public string SearchTerm

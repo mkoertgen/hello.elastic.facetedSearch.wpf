@@ -25,7 +25,7 @@ namespace HelloFacets.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("800")]
+        [global::System.Configuration.DefaultSettingValueAttribute("640")]
         public int Width {
             get {
                 return ((int)(this["Width"]));
@@ -37,7 +37,7 @@ namespace HelloFacets.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("600")]
+        [global::System.Configuration.DefaultSettingValueAttribute("480")]
         public int Height {
             get {
                 return ((int)(this["Height"]));
