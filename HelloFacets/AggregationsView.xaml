@@ -1,0 +1,46 @@
+﻿<UserControl x:Class="HelloFacets.AggregationsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:cal="http://www.caliburnproject.org"
+             xmlns:local="clr-namespace:HelloFacets"
+             mc:Ignorable="d" d:DataContext="{d:DesignInstance local:AggregationsViewModel}">
+    <UserControl.Resources>
+        <Style x:Key="TreeViewItemStyle" TargetType="TreeViewItem">
+            <Setter Property="IsEnabled" Value="{Binding IsEnabled}"/>
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <!-- ReSharper restore Xaml.BindingWithContextNotResolved -->
+            <Style.Resources>
+                <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="LightSteelBlue" Opacity="1" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="LightSteelBlue" Opacity="1" />
+                <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="Black" />
+            </Style.Resources>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <!-- SelectedItem on TreeView with Caliburn.Micro, 
+             cf: https://caliburnmicro.codeplex.com/discussions/243108 -->
+        <TreeView ItemsSource="{Binding Items}" ItemContainerStyle="{DynamicResource TreeViewItemStyle}"
+                cal:Message.Attach="[Event SelectedItemChanged] = [Action SelectedItemChanged($source)]">
+            <TreeView.Resources>
+                <!--The annotation types tree view's item style-->
+                <HierarchicalDataTemplate DataType="{x:Type local:AggregationViewModel}" 
+                        ItemsSource="{Binding Items}" ItemContainerStyle="{StaticResource TreeViewItemStyle}">
+                    <StackPanel Orientation="Horizontal" Margin="2">
+                        <CheckBox IsChecked="{Binding IsChecked}" Focusable="False" VerticalAlignment="Center"/>
+                        <TextBlock VerticalAlignment="Center" Padding="4 0 2 0">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} ({1})">
+                                    <Binding Path="Name" />
+                                    <Binding Path="DocCount" />
+                                </MultiBinding>
+                            </TextBlock.Text></TextBlock>
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.Resources>
+        </TreeView>
+
+    </Grid>
+</UserControl>

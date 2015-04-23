@@ -1,0 +1,68 @@
+﻿using System;
+using System.Collections.Generic;
+using FluentAssertions;
+using Nest;
+
+namespace HelloNest.Tests
+{
+    internal class ClientFactory
+    {
+        internal static IElasticClient CreateClient(IConnectionSettings connSettings)
+        {
+            var connection =
+#if INTEGRATION_TEST
+            new Connection(connSettings); 
+#else
+                new InMemoryConnection(connSettings);
+#endif
+            var client = new ElasticClient(connSettings, connection);
+
+            if (client.IndexExists("movies").Exists)
+                client.DeleteIndex("movies").OK.Should().BeTrue();
+            var response = client.IndexMany(TestMovies);
+            response.IsValid.Should().BeTrue();
+            response.Items.Should().NotBeEmpty();
+            response.Items.Should().OnlyContain(i => i.OK && !String.IsNullOrEmpty(i.Id));
+
+            client.IndexExists("movies").Exists.Should().BeTrue();
+
+            return client;
+
+        }
+
+        internal static IElasticClient CreateClient()
+        {
+            return CreateClient(new ConnectionSettings(new Uri("http://localhost:9200")).
+                SetDefaultIndex("movies"));
+        }
+
+        internal static readonly List<Movie> TestMovies = new List<Movie>
+			{
+				new Movie { Id = 1, Title = "The Godfather", 
+					Director = "Francis Ford Coppola", 
+					Genres = new[]{"Crime","Drama"}, 
+					Year = 1972},
+				new Movie { Id = 2, Title = "Lawrence of Arabia", 
+					Director = "David Lean", 
+					Genres = new[]{"Adventure","Biography","Drama"}, 
+					Year = 1962},
+				new Movie { Id = 3, Title = "To Kill a Mockingbird", 
+					Director = "Robert Mulligan", 
+					Genres = new[]{"Crime","Drama","Mystery"}, 
+					Year = 1962},
+				new Movie { Id = 4, Title = "The Assassination of Jesse James by the Coward Robert Ford", 
+					Director = "Andrew Dominik", 
+					Genres = new[]{"Biography","Crime","Drama"}, 
+					Year = 2007},
+				new Movie { Id = 5, Title = "Kill Bill: Vol. 1", 
+					Director = "Quentin Tarantino", 
+					Genres = new[]{"Action","Crime","Thriller"}, 
+					Year = 2003},
+				new Movie { Id = 6, Title = "Apocalypse Now", 
+					Director = "Francis Ford Coppola", 
+					Genres = new[]{"Drama","War"}, 
+					Year = 1979}
+			};
+
+    }
+}
