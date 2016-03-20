@@ -11,7 +11,6 @@ namespace HelloAggregations.Tests
         public static IElasticClient CreateClient(bool purge = false)
         {
             var node = new Uri("http://localhost:9200");
-
             var pool = new SingleNodeConnectionPool(node);
             var settings = new ConnectionSettings(pool)
                 .DefaultIndex("sports")
