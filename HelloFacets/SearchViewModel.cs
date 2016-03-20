@@ -11,7 +11,7 @@ namespace HelloFacets
     public class SearchViewModel : Screen
     {
         private readonly IElasticClient _search;
-        private string _searchTerm = String.Empty;
+        private string _searchTerm = string.Empty;
         private readonly BindableCollection<DocumentViewModel> _documents = new BindableCollection<DocumentViewModel>();
         private DocumentViewModel _selectedDocument;
 
@@ -38,7 +38,7 @@ namespace HelloFacets
             }
         }
 
-        public IEnumerable<DocumentViewModel> Documents { get { return _documents; } }
+        public IEnumerable<DocumentViewModel> Documents => _documents;
 
         public DocumentViewModel SelectedDocument
         {
@@ -51,7 +51,7 @@ namespace HelloFacets
             }
         }
 
-        public AggregationsViewModel Aggregations { get; private set; }
+        public AggregationsViewModel Aggregations { get; }
 
         public async void DoSearch()
         {

@@ -6,7 +6,7 @@ using Nest;
 
 namespace HelloAggregations.Tests
 {
-    class TestFactory
+    internal class TestFactory
     {
         public static IElasticClient CreateClient(bool purge = false)
         {

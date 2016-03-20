@@ -6,7 +6,7 @@ namespace HelloFacets
     public class DocumentViewModel : Screen, IDocument
     {
         private readonly Document _document;
-        private string _highlight = String.Empty;
+        private string _highlight = string.Empty;
 
         public DocumentViewModel(Document document)
         {
@@ -17,8 +17,8 @@ namespace HelloFacets
             DisplayName = _document.Title;
         }
 
-        public Guid Id { get { return _document.Id; } }
-        public string Type { get { return _document.Type; } }
+        public Guid Id => _document.Id;
+        public string Type => _document.Type;
 
         public string Title
         {

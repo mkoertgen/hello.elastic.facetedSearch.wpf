@@ -9,7 +9,7 @@ namespace HelloAggregations.Tests
 {
     // cf.: http://blog.qbox.io/elasticsearch-aggregations
     [TestFixture, Explicit]
-    class LearningTests
+    internal class LearningTests
     {
         private readonly IElasticClient _client = TestFactory.CreateClient();
 

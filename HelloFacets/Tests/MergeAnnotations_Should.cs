@@ -7,7 +7,7 @@ namespace HelloFacets.Tests
 {
     // ReSharper disable InconsistentNaming
     [TestFixture, Description("verifies #11533")]
-    class MergeAnnotations_Should
+    internal class MergeAnnotations_Should
     {
         [Test]
         public void Return_new_annotations_if_empty()
@@ -158,7 +158,7 @@ namespace HelloFacets.Tests
         private static void VerifyEquals(IList<AggregationViewModel> actual, IList<AggregationViewModel> expected)
         {
             actual.Count.Should().Be(expected.Count);
-            for (int i = 0; i < expected.Count; i++)
+            for (var i = 0; i < expected.Count; i++)
             {
                 var a = actual[i];
                 var b = expected[i];

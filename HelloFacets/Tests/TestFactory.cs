@@ -5,7 +5,7 @@ using Nest;
 
 namespace HelloFacets.Tests
 {
-    static class TestFactory
+    internal static class TestFactory
     {
         private const string IndexName = "hello";
 

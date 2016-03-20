@@ -6,7 +6,7 @@ using Nest;
 
 namespace HelloFacets
 {
-    static class ViewModelExtensions
+    internal static class ViewModelExtensions
     {
         public static IEnumerable<AggregationViewModel> ToViewModel(this IEnumerable<KeyValuePair<string, IAggregation>> aggregations)
         {
@@ -21,12 +21,12 @@ namespace HelloFacets
 
         public static string ToXaml(this IEnumerable<KeyValuePair<string, Highlight>> highlights, string separator = "<LineBreak/>")
         {
-            return String.Join(separator, highlights.Select(h => h.FormatHighlight(separator)));
+            return string.Join(separator, highlights.Select(h => h.FormatHighlight(separator)));
         }
 
         private static string FormatHighlight(this KeyValuePair<string, Highlight> kvp, string separator = "<LineBreak/>")
         {
-            return String.Join(separator, String.Format("{0}: {1}", kvp.Key, String.Join("...", kvp.Value.Highlights)));
+            return string.Join(separator, string.Format("{0}: {1}", kvp.Key, string.Join("...", kvp.Value.Highlights)));
         }
 
 

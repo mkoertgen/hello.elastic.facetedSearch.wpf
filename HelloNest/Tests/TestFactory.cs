@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using Elasticsearch.Net.Connection;
+using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
+using static Nest.Infer;
 
 namespace HelloNest.Tests
 {
 	internal static class TestFactory
 	{
-	    private static readonly List<Movie> TestMovies = new List<Movie>
+		private static readonly List<Movie> TestMovies = new List<Movie>
 			{
 				new Movie { Id = 1, Title = "The Godfather", 
 					Director = "Francis Ford Coppola", 
@@ -37,25 +38,42 @@ namespace HelloNest.Tests
 					Year = 1979}
 			};
 
-	    private static IElasticClient CreateClient(IConnectionSettingsValues settings, IConnection connection)
+		private static IElasticClient CreateClient(IConnectionSettingsValues settings)
 		{
-			var client = new ElasticClient(settings, connection);
+			var client = new ElasticClient(settings);
 
 			client.RootNodeInfo().IsValid.Should().BeTrue();
+
 			IndexTestMovies(client);
+
 			return client;
 
 		}
 
 		internal static IElasticClient CreateClient()
 		{
-			var settings = new ConnectionSettings(new Uri("http://localhost:9200"), "movies").UsePrettyResponses();
-			var connection = new HttpConnection(settings); // new InMemoryConnection(settings);
-			return CreateClient(settings, connection);
+			var node = new Uri("http://localhost:9200");
+
+			var connectionPool = new SingleNodeConnectionPool(node);
+			var connectionSettings = new ConnectionSettings(connectionPool)
+				.DefaultIndex("movies");
+
+			return CreateClient(connectionSettings);
 		}
 
 		private static void IndexTestMovies(IElasticClient client)
 		{
+			if (!client.IndexExists(Indices<Movie>()).Exists)
+			{
+				client.CreateIndex(Index<Movie>(), c => c
+					.Mappings(map => map
+						.Map<Movie>(m => m
+							.AutoMap()
+						)
+					)
+				);
+			}
+
 			// update test data
 			TestMovies.ForEach(movie =>
 			{
@@ -67,10 +85,7 @@ namespace HelloNest.Tests
 			var response = client.IndexMany(TestMovies);
 			response.IsValid.Should().BeTrue();
 			response.Items.Should().NotBeEmpty();
-			response.Items.Should().OnlyContain(i => i.IsValid && !String.IsNullOrEmpty(i.Id));
-
-			// assert index exists / has been created
-			client.IndexExists(i => i.Index("movies")).Exists.Should().BeTrue();
+			response.Items.Should().OnlyContain(i => i.IsValid && !string.IsNullOrEmpty(i.Id));
 		}
 	}
 }

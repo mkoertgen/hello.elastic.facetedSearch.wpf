@@ -8,16 +8,6 @@
         public TrackList Tracks { get; set; }
     }
 
-    public class TrackList : IHaveType
-    {
-        public string Type { get; private set; }
-
-        public TrackList()
-        {
-            Type = GetType().AssemblyQualifiedName;
-        }
-    }
-
     public class LpTrackList : TrackList
     {
         public string TracksSideA { get; set; }

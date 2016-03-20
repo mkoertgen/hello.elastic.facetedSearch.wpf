@@ -292,7 +292,7 @@ namespace HelloFacets.MiniMods
         {
             bool? state = null;
             var items = viewModel.Items.ToList();
-            for (int i = 0; i < items.Count; ++i)
+            for (var i = 0; i < items.Count; ++i)
             {
                 var current = items[i].IsChecked;
                 if (i == 0)
