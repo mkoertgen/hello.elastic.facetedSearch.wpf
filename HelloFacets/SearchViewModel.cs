@@ -111,7 +111,7 @@ namespace HelloFacets
         private SearchDescriptor<Document> AddAggregationFilter(SearchDescriptor<Document> sd)
         {
             if (Aggregations?.Items == null) return sd;
-            var typeFilter = new List<FilterContainer>();
+            var typeFilter = new List<QueryContainer>();
 
             // filter by type
             var typeVm = Aggregations.Items.FindFirst(itm => itm.Name == "Type");
@@ -119,9 +119,16 @@ namespace HelloFacets
             {
                 var typeViewModels = typeVm
                     .Items.FindAll(i => i.IsChecked == true)
-                    .Select(item => item.Aggregation).OfType<KeyItem>();
-                var terms = typeViewModels.Select(t => t.Key).ToArray();
-                if (terms.Any()) typeFilter.Add(new FilterDescriptor<Document>().Or(f => f.Terms(r => r.Type, terms)));
+                    .Select(item => item.Aggregation).OfType<KeyedValueAggregate>();
+                var terms = typeViewModels.SelectMany(t => t.Keys).ToArray();
+                if (terms.Any())
+                {
+                    var tq = new QueryContainerDescriptor<Document>()
+                        .Terms(td => td.Field(d => d.Type).Terms(terms));
+                    var or = new QueryContainerDescriptor<Document>()
+                        .Bool(b => b.Should(tq));
+                    typeFilter.Add(or);
+                }
             }
 
             // filter by modified/changed
@@ -129,19 +136,26 @@ namespace HelloFacets
             if (typeVm != null)
             {
                 var rtvm = typeVm.Items.FindAll(i => i.IsChecked == true)
-                    .Select(item => item.Aggregation).OfType<Bucket>()
-                    .SelectMany(bucket => bucket.Items).OfType<RangeItem>()
-                    .Select(range => new FilterDescriptor<Document>()
+                    .Select(item => item.Aggregation).OfType<BucketAggregate>()
+                    .SelectMany(bucket => bucket.Items).OfType<RangeBucket>()
+                    .Select(range => new QueryContainerDescriptor<Document>()
                         .Range(descriptor => descriptor
-                            .OnField(r => r.Changed)
-                            .Greater(range.From)
-                            .Lower(range.To)))
+                            .Field(r => r.Changed)
+                            .GreaterThan(range.From)
+                            .LessThan(range.To)))
                     .ToArray();
-                if (rtvm.Any()) typeFilter.Add(new FilterDescriptor<Document>().Or(rtvm));
+
+                if (rtvm.Any())
+                {
+                    var or = new QueryContainerDescriptor<Document>()
+                        .Bool(b => b.Should(rtvm));
+                    typeFilter.Add(or);
+                }
             }
 
             if (!typeFilter.Any()) return sd;
-            return sd.Filter(descriptor => descriptor.And(typeFilter.ToArray()));
+
+            return sd.Query(d => d.Bool(b => b.Must(typeFilter.ToArray())));
         }
     }
 }

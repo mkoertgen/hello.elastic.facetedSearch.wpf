@@ -10,7 +10,7 @@ namespace HelloFacets
 
         public DocumentViewModel(Document document)
         {
-            if (document == null) throw new ArgumentNullException("document");
+            if (document == null) throw new ArgumentNullException(nameof(document));
             _document = document;
 
             // ReSharper disable once DoNotCallOverridableMethodsInConstructor

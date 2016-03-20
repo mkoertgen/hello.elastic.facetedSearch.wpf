@@ -32,7 +32,7 @@ namespace HelloFacets.MiniMods
 
         public static TriggerBase CreateTrigger(string triggerText)
         {
-            if (triggerText == null) throw new ArgumentNullException("triggerText");
+            if (triggerText == null) throw new ArgumentNullException(nameof(triggerText));
 
             var triggerDetail = triggerText
                 .Replace("[", string.Empty)
