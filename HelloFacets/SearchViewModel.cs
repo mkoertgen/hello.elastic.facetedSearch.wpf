@@ -17,8 +17,8 @@ namespace HelloFacets
 
         public SearchViewModel(IElasticClient search, AggregationsViewModel aggregations)
         {
-            if (search == null) throw new ArgumentNullException("search");
-            if (aggregations == null) throw new ArgumentNullException("aggregations");
+            if (search == null) throw new ArgumentNullException(nameof(search));
+            if (aggregations == null) throw new ArgumentNullException(nameof(aggregations));
             _search = search;
             Aggregations = aggregations;
             Aggregations.CheckedChanged += (sender, args) => DoSearch();
@@ -71,16 +71,16 @@ namespace HelloFacets
         private SearchDescriptor<Document> GetSearchDescriptor(SearchDescriptor<Document> searchDescriptor = null)
         {
             var newSearchDescriptor = (searchDescriptor ?? new SearchDescriptor<Document>())
-                .QueryString(_searchTerm)
+                .Query(q => q.QueryString(qd => qd.Query(_searchTerm)))
                 //.Query(q => q.FuzzyLikeThis(s => s.LikeText(_searchTerm)))
                 .Aggregations(AggregationsSelector)
                 .Highlight(h => h
                     //.FragmentSize(150).NumberOfFragments(3) // some default used in many ELS examples, defaults are (100) and (5)
                     // OnAll <=> "_all" only works if "store=true", cf.: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-request-highlighting.html
-                    .OnFields(
-                        f => f.OnField(d => d.Title),
-                        f => f.OnField(d => d.Type),
-                        f => f.OnField(d => d.Content))
+                    .Fields(
+                        f => f.Field(d => d.Title),
+                        f => f.Field(d => d.Type),
+                        f => f.Field(d => d.Content))
                     // TextBlock supports inline content, cf.: http://www.wpf-tutorial.com/basic-controls/the-textblock-control-inline-formatting/
                     .PreTags("<Bold>").PostTags("</Bold>")
                     );
@@ -88,9 +88,9 @@ namespace HelloFacets
             return AddAggregationFilter(newSearchDescriptor);
         }
 
-        private static AggregationDescriptor<Document> AggregationsSelector(AggregationDescriptor<Document> aggregationDescriptor = null)
+        private static AggregationContainerDescriptor<Document> AggregationsSelector(AggregationContainerDescriptor<Document> aggregationDescriptor = null)
         {
-            var newAggregationDescriptor = (aggregationDescriptor ?? new AggregationDescriptor<Document>())
+            var newAggregationDescriptor = (aggregationDescriptor ?? new AggregationContainerDescriptor<Document>())
                 // ordering terms, "_term", "_count", ...
                 // default is "descending by count"
                 // cf.: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html#search-aggregations-bucket-terms-aggregation-order
@@ -110,7 +110,7 @@ namespace HelloFacets
 
         private SearchDescriptor<Document> AddAggregationFilter(SearchDescriptor<Document> sd)
         {
-            if (Aggregations == null || Aggregations.Items == null) return sd;
+            if (Aggregations?.Items == null) return sd;
             var typeFilter = new List<FilterContainer>();
 
             // filter by type

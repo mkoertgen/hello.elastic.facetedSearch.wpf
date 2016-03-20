@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using HelloFacets.MiniMods;
@@ -8,7 +7,7 @@ namespace HelloFacets
 {
     internal static class ViewModelExtensions
     {
-        public static IEnumerable<AggregationViewModel> ToViewModel(this IEnumerable<KeyValuePair<string, IAggregation>> aggregations)
+        public static IEnumerable<AggregationViewModel> ToViewModel(this IEnumerable<KeyValuePair<string, IAggregate>> aggregations)
         {
             if (aggregations == null) return Enumerable.Empty<AggregationViewModel>();
             return aggregations.Select(kvp => kvp.Value.ToViewModel(kvp.Key));
@@ -19,19 +18,19 @@ namespace HelloFacets
             return new DocumentViewModel(hit.Source) { Highlight = hit.Highlights.ToXaml() };
         }
 
-        public static string ToXaml(this IEnumerable<KeyValuePair<string, Highlight>> highlights, string separator = "<LineBreak/>")
+        public static string ToXaml(this HighlightFieldDictionary highlights, string separator = "<LineBreak/>")
         {
             return string.Join(separator, highlights.Select(h => h.FormatHighlight(separator)));
         }
 
-        private static string FormatHighlight(this KeyValuePair<string, Highlight> kvp, string separator = "<LineBreak/>")
+        private static string FormatHighlight(this KeyValuePair<string, HighlightHit> kvp, string separator = "<LineBreak/>")
         {
-            return string.Join(separator, string.Format("{0}: {1}", kvp.Key, string.Join("...", kvp.Value.Highlights)));
+            return string.Join(separator, $"{kvp.Key}: {string.Join("...", kvp.Value.Highlights)}");
         }
 
 
-
-        public static IEnumerable<AggregationViewModel> Merge(this IEnumerable<AggregationViewModel> items, IEnumerable<AggregationViewModel> aggregations)
+        public static IEnumerable<AggregationViewModel> Merge(this IEnumerable<AggregationViewModel> items, 
+            IEnumerable<AggregationViewModel> aggregations)
         {
             // first time initialization -> plain copy
             var mergedAggregations = items.ToList();
@@ -45,11 +44,11 @@ namespace HelloFacets
             // see if we need to add some facets...
             foreach (var aggregation in aggregations)
             {
-                // lets see if this aggregation category already exists
+                // lets see if this aggregate category already exists
                 var found = mergedAggregations.FirstOrDefault(itm => itm.Name == aggregation.Name);
                 if (found == null)
                 {
-                    //mergedAggregations.Add(aggregation);
+                    //mergedAggregations.Add(aggregate);
                     continue;
                 }
 
@@ -77,118 +76,98 @@ namespace HelloFacets
             return mergedAggregations;
         }
 
-        private static AggregationViewModel ToViewModel(this IAggregation aggregation, string name = null)
+        private static AggregationViewModel ToViewModel(this IAggregate aggregate, string name = null)
         {
             return new AggregationViewModel
             {
-                Aggregation = aggregation,
-                Name = name ?? aggregation.GetName(),
-                DocCount = aggregation.GetDocCount(),
-                Items = aggregation.GetItems(),
+                Aggregation = aggregate,
+                Name = name ?? "todo",
+                DocCount = aggregate.GetDocCount(),
+                Items = aggregate.GetItems(),
             };
         }
 
-        private static string GetName(this IAggregation aggregation)
-        {
-            var histogramItem = aggregation as HistogramItem;
-            if (histogramItem != null)
-                return histogramItem.KeyAsString;
-
-            var keyItem = aggregation as KeyItem;
-            if (keyItem != null)
-                return keyItem.Key;
-
-            var rangeItem = aggregation as RangeItem;
-            if (rangeItem != null)
-                return rangeItem.Key;
-
-            var significantTermItem = aggregation as SignificantTermItem;
-            if (significantTermItem != null)
-                return significantTermItem.Key;
-
-            return aggregation.ToString();
-        }
-
-        private static long GetDocCount(this IAggregation aggregation)
+        private static long GetDocCount(this IAggregate aggregate)
         {
             // Bucket
-            var bucket = aggregation as Bucket;
-            if (bucket != null)
-                return bucket.Items.GetDocCount();
-            var bucketWithCount = aggregation as IBucketWithCountAggregation;
+            var bucketAgg = aggregate as BucketAggregate;
+            if (bucketAgg != null)
+                return bucketAgg.DocCount;
 
-            if (bucketWithCount != null)
-                return bucketWithCount.DocCount;
-            var bucketWithDocCount = aggregation as BucketWithDocCount;
-            if (bucketWithDocCount != null)
-                return bucketWithDocCount.DocCount;
+            var singleBucketAgg = aggregate as SingleBucketAggregate;
+            if (singleBucketAgg != null)
+                return singleBucketAgg.DocCount;
 
-            var histogramItem = aggregation as HistogramItem;
-            if (histogramItem != null)
-                return histogramItem.DocCount;
+            var significantTermsAgg = aggregate as SignificantTermsAggregate;
+            if (significantTermsAgg != null)
+                return significantTermsAgg.DocCount;
 
-            var keyItem = aggregation as KeyItem;
-            if (keyItem != null)
-                return keyItem.DocCount;
+            var bucketsAgg = aggregate as BucketAggregateBase;
+            if (bucketsAgg != null)
+                return bucketsAgg.Aggregations.Values.GetDocCount();
 
-            var rangeItem = aggregation as RangeItem;
-            if (rangeItem != null)
-                return rangeItem.DocCount;
+            //var histogramBucket = aggregate as HistogramBucket;
+            //if (histogramBucket != null)
+            //    return histogramBucket.DocCount;
 
-            var significantTermItem = aggregation as SignificantTermItem;
-            if (significantTermItem != null)
-                return significantTermItem.DocCount;
+            //var keyedBucket = aggregate as KeyedBucket;
+            //if (keyedBucket != null)
+            //    return keyedBucket.DocCount.GetValueOrDefault();
 
-            var singleBucket = aggregation as SingleBucket;
-            if (singleBucket != null)
-                return singleBucket.DocCount;
+            //var rangeBucket = aggregate as RangeBucket;
+            //if (rangeBucket != null)
+            //    return rangeBucket.DocCount;
+
+            //var significantTermsBucket = aggregate as SignificantTermsBucket;
+            //if (significantTermsBucket != null)
+            //    return significantTermsBucket.DocCount;
 
             return 0L;
         }
 
-        private static long GetDocCount(this IEnumerable<IAggregation> aggregations)
+        private static long GetDocCount(this IEnumerable<IAggregate> aggregations)
         {
-            return aggregations != null ? aggregations.Aggregate(0L, (sum, a) => sum + a.GetDocCount()) : 0L;
+            return aggregations?.Aggregate(0L, (sum, a) => sum + a.GetDocCount()) ?? 0L;
         }
 
-        private static IEnumerable<AggregationViewModel> GetItems(this IAggregation aggregation)
+        private static IEnumerable<AggregationViewModel> GetItems(this IAggregate aggregate)
         {
-            if (aggregation == null) return Enumerable.Empty<AggregationViewModel>();
+            if (aggregate == null) return Enumerable.Empty<AggregationViewModel>();
 
             var items = new List<AggregationViewModel>();
 
-            var bucket = aggregation as Bucket;
-            if (bucket != null)
-                items.AddRange(bucket.Items.ToViewModel());
+            var bucketAgg = aggregate as BucketAggregateBase;
+            if (bucketAgg != null)
+                items.AddRange(bucketAgg.Aggregations.ToViewModel());
 
-            var bucketWithDocCount = aggregation as BucketWithDocCount;
-            if (bucketWithDocCount != null)
-                items.AddRange(bucketWithDocCount.Items.ToViewModel());
+            //var bucketWithDocCount = aggregate as BucketWithDocCount;
+            //if (bucketWithDocCount != null)
+            //    items.AddRange(bucketWithDocCount.Items.ToViewModel());
 
-            var bucketAggregation = aggregation as IBucketAggregation;
-            if (bucketAggregation != null)
-                items.AddRange(bucketAggregation.Aggregations.ToViewModel());
+            //var bucketAggregation = aggregate as IBucketAggregation;
+            //if (bucketAggregation != null)
+            //    items.AddRange(bucketAggregation.Aggregations.ToViewModel());
 
             return items;
         }
 
-        private static IEnumerable<AggregationViewModel> ToViewModel(this IEnumerable<IAggregation> aggregations)
+        private static IEnumerable<AggregationViewModel> ToViewModel(this IEnumerable<IAggregate> aggregations)
         {
             if (aggregations == null) return Enumerable.Empty<AggregationViewModel>();
 
             // NOTE: filter out range items. 
-            // Convention: range items are wrapped in a named aggregation so a nice display name can be used.
+            // Convention: range items are wrapped in a named aggregate so a nice display name can be used.
             //return aggregations.Select(ToViewModel);
 
             // NOTE: Use loop to preserve order (instead of set operations)
             var items = new List<AggregationViewModel>();
-            foreach (var aggregation in aggregations)
+            foreach (var aggregate in aggregations)
             {
-                var rangeItem = aggregation as RangeItem;
-                if (rangeItem != null)
-                    items.AddRange(rangeItem.Aggregations.ToViewModel());
+                var bucketAgg = aggregate as BucketAggregateBase;
+                if (bucketAgg != null)
+                    items.AddRange(bucketAgg.Aggregations.ToViewModel());
                 else
-                    items.Add(aggregation.ToViewModel());
+                    items.Add(aggregate.ToViewModel());
             }
             return items;
         }

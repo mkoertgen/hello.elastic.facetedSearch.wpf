@@ -5,11 +5,11 @@ namespace HelloFacets
 {
     public class AggregationViewModel : TreeItemViewModel<AggregationViewModel>
     {
-        private IAggregation _aggregation;
+        private IAggregate _aggregation;
         private string _name;
         private long _docCount;
 
-        public IAggregation Aggregation
+        public IAggregate Aggregation
         {
             get { return _aggregation; }
             set
