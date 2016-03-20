@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Elasticsearch.Net.Connection;
+using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
 
@@ -10,47 +10,44 @@ namespace HelloAggregations.Tests
     {
         public static IElasticClient CreateClient(bool purge = false)
         {
-            var settings = new ConnectionSettings(new Uri("http://localhost:9200"))
-                .SetDefaultIndex("sports")
-                .UsePrettyResponses();
+            var node = new Uri("http://localhost:9200");
 
-            var connection = new HttpConnection(settings); // new InMemoryConnection(settings);
-            var client = CreateClient(settings, connection);
+            var pool = new SingleNodeConnectionPool(node);
+            var settings = new ConnectionSettings(pool)
+                .DefaultIndex("sports")
+                .PrettyJson();
+
+            var client = CreateClient(settings);
 
             if (purge)
-            {
-                SetupIndexAndMapping(client);
                 IndexTestData(client);
-            }
 
             return client;
         }
 
-        private static IElasticClient CreateClient(IConnectionSettingsValues settings, IConnection connection)
+        private static IElasticClient CreateClient(IConnectionSettingsValues settings)
         {
-            var client = new ElasticClient(settings, connection);
+            var client = new ElasticClient(settings);
             client.RootNodeInfo().IsValid.Should().BeTrue();
             return client;
         }
 
-        private static void SetupIndexAndMapping(IElasticClient client)
+        private static void IndexTestData(IElasticClient client)
         {
-            if (client.IndexExists(i => i.Index("sports")).Exists)
-                client.DeleteIndex(i => i.Index("sports"));
+            if (client.IndexExists("sports").Exists)
+                client.DeleteIndex("sports");
 
             client.CreateIndex("sports", s => s
                 // add mapping for location to geo_point, cf.: http://markswanderingthoughts.nl/post/84327066530/geo-distance-searching-in-elasticserach-with-nest
-                .AddMapping<Athlete>(f => f
-                  .MapFromAttributes()
-                  .Properties(p => p
-                    .GeoPoint(g => g.Name(n => n.Location).IndexLatLon())
-                  )
+                .Mappings(map => map
+                    .Map<Athlete>(m => m
+                        .AutoMap()
+                        .Properties(p => p
+                            .GeoPoint(g => g.Name(n => n.Location).LatLon()))
+                    )
                 )
-              );
-        }
+            );
 
-        private static void IndexTestData(IElasticClient client)
-        {
             client.IndexMany(Athletes);
         }
 
