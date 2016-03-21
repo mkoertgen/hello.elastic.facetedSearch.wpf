@@ -105,6 +105,7 @@
     </Compile>
     <Compile Include="AggregationsViewModel.cs" />
     <Compile Include="AggregationViewModel.cs" />
+    <Compile Include="AggregationViewModel_Should.cs" />
     <Compile Include="AppBootstrapper.cs" />
     <Compile Include="Attached.cs" />
     <Compile Include="AutofacBootstrapper.cs" />
@@ -123,9 +124,9 @@
       <DependentUpon>DocumentView.xaml</DependentUpon>
     </Compile>
     <Compile Include="DocumentViewModel.cs" />
-    <Compile Include="Tests\AggregationsViewModel_Should.cs" />
-    <Compile Include="Tests\MergeAnnotations_Should.cs" />
-    <Compile Include="Tests\TestFactory.cs" />
+    <Compile Include="AggregationsViewModel_Should.cs" />
+    <Compile Include="ViewModelExtensions_Should.cs" />
+    <Compile Include="TestFactory.cs" />
     <Compile Include="ViewModelExtensions.cs" />
     <Page Include="AggregationsView.xaml">
       <SubType>Designer</SubType>

@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
 
-namespace HelloFacets.Tests
+namespace HelloFacets
 {
     // ReSharper disable InconsistentNaming
     [TestFixture]
