@@ -9,7 +9,7 @@ namespace HelloAggregations.Tests
 {
     // cf.: http://blog.qbox.io/elasticsearch-aggregations
     [TestFixture, Explicit]
-    class LearningTests
+    internal class LearningTests
     {
         private readonly IElasticClient _client = TestFactory.CreateClient();
 
@@ -21,32 +21,32 @@ namespace HelloAggregations.Tests
                 .Aggregations(a => a
                     .Terms("sport", t => t.Field(athlete => athlete.Sport))
                 )
-                );
+            );
 
             results.Total.Should().Be(TestFactory.Athletes.Count);
 
-            var bucket = results.Aggs.Terms("sport");
-            bucket.Should().NotBeNull();
+            var buckets = results.Aggs.Terms("sport").Buckets;
+            buckets.Should().NotBeNull();
 
-            bucket.Items.Should().HaveCount(5);
+            buckets.Should().HaveCount(5);
 
-            bucket.Items[0].Key.Should().Be("baseball");
-            bucket.Items[0].DocCount.Should().Be(16);
+            buckets[0].Key.Should().Be("baseball");
+            buckets[0].DocCount.Should().Be(16);
 
-            bucket.Items[1].Key.Should().Be("football");
-            bucket.Items[1].DocCount.Should().Be(2);
+            buckets[1].Key.Should().Be("football");
+            buckets[1].DocCount.Should().Be(2);
 
-            bucket.Items[2].Key.Should().Be("golf");
-            bucket.Items[2].DocCount.Should().Be(2);
+            buckets[2].Key.Should().Be("golf");
+            buckets[2].DocCount.Should().Be(2);
 
-            bucket.Items[3].Key.Should().Be("basketball");
-            bucket.Items[3].DocCount.Should().Be(1);
+            buckets[3].Key.Should().Be("basketball");
+            buckets[3].DocCount.Should().Be(1);
 
-            bucket.Items[4].Key.Should().Be("hockey");
-            bucket.Items[4].DocCount.Should().Be(1);
+            buckets[4].Key.Should().Be("hockey");
+            buckets[4].DocCount.Should().Be(1);
         }
 
-        [Test, Ignore("\"Nested\" does not work on simple rating array")]
+        [Test]//, Ignore("\"Nested\" does not work on simple rating array")]
         public void Test_nested_rating_average()
         {
             // cf.: http://www.elasticsearch.org/blog/introducing-elasticsearch-net-nest-1-0-0-beta1/
@@ -54,20 +54,27 @@ namespace HelloAggregations.Tests
             var results = _client.Search<Athlete>(s => s
                 .Size(0)
                 .Aggregations(a => a
-                    .Terms("name", t => t.Field(m => m.Name))
-                        .Nested("rating", n => n
-                            .Path(p => p.Rating)
-                            .Aggregations(r => r
-                                .Average("avg_rating", m=>m.Field(p=>p.Rating.First()))
-                            )
+                    .Terms("name", t => t.Field(m => m.Name)
+                        //.OrderDescending("rating_avg")
+                    )
+                    .Nested("rating", n => n
+                        .Path(p => p.Rating)
+                        .Aggregations(aa => aa
+                            .Average("rating_avg", m => m.Field(p => p.Rating))
                         )
                     )
-                );
+                )
+            );
 
-            var bucket = results.Aggs.Nested("name");
-            var averageRating = bucket.Average("avg_rating");
+            var names = results.Aggs.Terms("name");
+            names.Buckets.Should().HaveCount(10);
 
-            // TODO: ...
+            var rating = results.Aggs.Nested("rating");
+
+            rating.Should().NotBeNull();
+            // TODO...
+            //var averageRating = bucket.Nested("rating").Average("avg_rating");
+
         }
 
         [Test, Description("Search all athletes within a 20 miles radius around a point")]
@@ -79,14 +86,14 @@ namespace HelloAggregations.Tests
                     .GeoDistance("baseball_player_ring", g => g
                         .Field(f => f.Location)
                         .Origin(46.12, -68.55)
-                        .Unit(GeoUnit.Miles)
+                        .Unit(DistanceUnit.Miles)
                         .Ranges(r => r.From(0).To(20)))
                     )
                 );
 
-            var bucket = results.Aggs.GeoDistance("baseball_player_ring");
+            var buckets = results.Aggs.GeoDistance("baseball_player_ring").Buckets;
 
-            var rangeItem = bucket.Items.Single();
+            var rangeItem = buckets.Single();
             rangeItem.DocCount.Should().Be(14, "14 athletes should live within a 20mi radius");
         }
 
@@ -103,9 +110,9 @@ namespace HelloAggregations.Tests
 
             stats.Min.Should().Be(1);
             stats.Max.Should().Be(10);
-            stats.Average.Should().BeInRange(4.37, 4.38);
-            stats.Count.Should().Be(37);
-            stats.Sum.Should().Be(162);
+            stats.Average.Should().BeInRange(4.60, 4.62);
+            stats.Count.Should().Be(44);
+            stats.Sum.Should().Be(203);
         }
 
         [Test]
@@ -128,11 +135,11 @@ namespace HelloAggregations.Tests
                     )
                 );
 
-            var bucket = results.Aggs.DateRange("date_ranges");
+            var buckets = results.Aggs.DateRange("date_ranges").Buckets;
 
-            bucket.Items.Should().HaveCount(3);
+            buckets.Should().HaveCount(3);
 
-            var rangeItem = bucket.Items[0];
+            var rangeItem = buckets[0];
             rangeItem.DocCount.Should().Be(22, "all athletes were born long before two days");
 
             var to = rangeItem.To.ToDateTime();

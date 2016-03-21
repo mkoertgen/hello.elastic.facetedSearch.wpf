@@ -2,10 +2,10 @@ using System;
 
 namespace HelloAggregations.Tests
 {
-    static class ElasticSearchExtensions
+    internal static class ElasticSearchExtensions
     {
         // cf.: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/mapping-core-types.html#date
-        static readonly DateTime Epoch = new DateTime(1970,1,1,0,0,0,0,DateTimeKind.Utc);
+        private static readonly DateTime Epoch = new DateTime(1970,1,1,0,0,0,0,DateTimeKind.Utc);
 
         public static DateTime ToDateTime(this double value)
         {

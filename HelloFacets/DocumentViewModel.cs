@@ -6,19 +6,19 @@ namespace HelloFacets
     public class DocumentViewModel : Screen, IDocument
     {
         private readonly Document _document;
-        private string _highlight = String.Empty;
+        private string _highlight = string.Empty;
 
         public DocumentViewModel(Document document)
         {
-            if (document == null) throw new ArgumentNullException("document");
+            if (document == null) throw new ArgumentNullException(nameof(document));
             _document = document;
 
             // ReSharper disable once DoNotCallOverridableMethodsInConstructor
             DisplayName = _document.Title;
         }
 
-        public Guid Id { get { return _document.Id; } }
-        public string Type { get { return _document.Type; } }
+        public Guid Id => _document.Id;
+        public string Type => _document.Type;
 
         public string Title
         {

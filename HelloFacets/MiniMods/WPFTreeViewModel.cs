@@ -193,7 +193,7 @@ namespace HelloFacets.MiniMods
             get { return base.Items.Cast<TItem>(); }
             set
             {
-                var items = value != null ? value.Cast<ITreeItemViewModel>() : null;
+                var items = value?.Cast<ITreeItemViewModel>();
                 base.Items = items;
             }
         }
@@ -228,7 +228,7 @@ namespace HelloFacets.MiniMods
         // cf: https://caliburnmicro.codeplex.com/discussions/243108
         public virtual void SelectedItemChanged(TreeView treeView)
         {
-            if (treeView == null) throw new ArgumentNullException("treeView");
+            if (treeView == null) throw new ArgumentNullException(nameof(treeView));
             SelectedItem = treeView.SelectedItem as ITreeItemViewModel;
         }
     }
@@ -263,7 +263,7 @@ namespace HelloFacets.MiniMods
         // cf: https://caliburnmicro.codeplex.com/discussions/243108
         public virtual void SelectedItemChanged(TreeView treeView)
         {
-            if (treeView == null) throw new ArgumentNullException("treeView");
+            if (treeView == null) throw new ArgumentNullException(nameof(treeView));
             SelectedItem = treeView.SelectedItem as TItem;
         }
     }
@@ -292,7 +292,7 @@ namespace HelloFacets.MiniMods
         {
             bool? state = null;
             var items = viewModel.Items.ToList();
-            for (int i = 0; i < items.Count; ++i)
+            for (var i = 0; i < items.Count; ++i)
             {
                 var current = items[i].IsChecked;
                 if (i == 0)
@@ -347,7 +347,7 @@ namespace HelloFacets.MiniMods
         public static void Apply<TItem>(this IEnumerable<TItem> items, Action<TItem> action)
             where TItem : class, ITreeItemViewModel
         {
-            if (items == null) throw new ArgumentNullException("items");
+            if (items == null) throw new ArgumentNullException(nameof(items));
             foreach (var item in items)
             {
                 action(item);

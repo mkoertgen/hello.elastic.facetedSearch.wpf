@@ -11,14 +11,14 @@ namespace HelloFacets
     public class SearchViewModel : Screen
     {
         private readonly IElasticClient _search;
-        private string _searchTerm = String.Empty;
+        private string _searchTerm = string.Empty;
         private readonly BindableCollection<DocumentViewModel> _documents = new BindableCollection<DocumentViewModel>();
         private DocumentViewModel _selectedDocument;
 
         public SearchViewModel(IElasticClient search, AggregationsViewModel aggregations)
         {
-            if (search == null) throw new ArgumentNullException("search");
-            if (aggregations == null) throw new ArgumentNullException("aggregations");
+            if (search == null) throw new ArgumentNullException(nameof(search));
+            if (aggregations == null) throw new ArgumentNullException(nameof(aggregations));
             _search = search;
             Aggregations = aggregations;
             Aggregations.CheckedChanged += (sender, args) => DoSearch();
@@ -38,7 +38,7 @@ namespace HelloFacets
             }
         }
 
-        public IEnumerable<DocumentViewModel> Documents { get { return _documents; } }
+        public IEnumerable<DocumentViewModel> Documents => _documents;
 
         public DocumentViewModel SelectedDocument
         {
@@ -51,7 +51,7 @@ namespace HelloFacets
             }
         }
 
-        public AggregationsViewModel Aggregations { get; private set; }
+        public AggregationsViewModel Aggregations { get; }
 
         public async void DoSearch()
         {
@@ -71,16 +71,16 @@ namespace HelloFacets
         private SearchDescriptor<Document> GetSearchDescriptor(SearchDescriptor<Document> searchDescriptor = null)
         {
             var newSearchDescriptor = (searchDescriptor ?? new SearchDescriptor<Document>())
-                .QueryString(_searchTerm)
+                .Query(q => q.QueryString(qd => qd.Query(_searchTerm)))
                 //.Query(q => q.FuzzyLikeThis(s => s.LikeText(_searchTerm)))
                 .Aggregations(AggregationsSelector)
                 .Highlight(h => h
                     //.FragmentSize(150).NumberOfFragments(3) // some default used in many ELS examples, defaults are (100) and (5)
                     // OnAll <=> "_all" only works if "store=true", cf.: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-request-highlighting.html
-                    .OnFields(
-                        f => f.OnField(d => d.Title),
-                        f => f.OnField(d => d.Type),
-                        f => f.OnField(d => d.Content))
+                    .Fields(
+                        f => f.Field(d => d.Title),
+                        f => f.Field(d => d.Type),
+                        f => f.Field(d => d.Content))
                     // TextBlock supports inline content, cf.: http://www.wpf-tutorial.com/basic-controls/the-textblock-control-inline-formatting/
                     .PreTags("<Bold>").PostTags("</Bold>")
                     );
@@ -88,9 +88,9 @@ namespace HelloFacets
             return AddAggregationFilter(newSearchDescriptor);
         }
 
-        private static AggregationDescriptor<Document> AggregationsSelector(AggregationDescriptor<Document> aggregationDescriptor = null)
+        private static AggregationContainerDescriptor<Document> AggregationsSelector(AggregationContainerDescriptor<Document> aggregationDescriptor = null)
         {
-            var newAggregationDescriptor = (aggregationDescriptor ?? new AggregationDescriptor<Document>())
+            var newAggregationDescriptor = (aggregationDescriptor ?? new AggregationContainerDescriptor<Document>())
                 // ordering terms, "_term", "_count", ...
                 // default is "descending by count"
                 // cf.: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/search-aggregations-bucket-terms-aggregation.html#search-aggregations-bucket-terms-aggregation-order
@@ -110,18 +110,30 @@ namespace HelloFacets
 
         private SearchDescriptor<Document> AddAggregationFilter(SearchDescriptor<Document> sd)
         {
-            if (Aggregations == null || Aggregations.Items == null) return sd;
-            var typeFilter = new List<FilterContainer>();
+            if (Aggregations?.Items == null) return sd;
+            var typeFilter = new List<QueryContainer>();
 
             // filter by type
             var typeVm = Aggregations.Items.FindFirst(itm => itm.Name == "Type");
             if (typeVm != null)
             {
-                var typeViewModels = typeVm
+                var typeAggs = typeVm
                     .Items.FindAll(i => i.IsChecked == true)
-                    .Select(item => item.Aggregation).OfType<KeyItem>();
-                var terms = typeViewModels.Select(t => t.Key).ToArray();
-                if (terms.Any()) typeFilter.Add(new FilterDescriptor<Document>().Or(f => f.Terms(r => r.Type, terms)));
+                    .Select(item => item.Aggregation).ToList();
+
+                var typeKeys = typeAggs.OfType<KeyedValueAggregate>().SelectMany(t => t.Keys);
+                var typeTerms = typeAggs.OfType<TermsAggregate>().SelectMany(t => t.Buckets.Select(k => k.Key));
+
+                var terms = typeKeys.Concat(typeTerms).ToList();
+
+                if (terms.Any())
+                {
+                    var tq = new QueryContainerDescriptor<Document>()
+                        .Terms(td => td.Field(d => d.Type).Terms(terms));
+                    var or = new QueryContainerDescriptor<Document>()
+                        .Bool(b => b.Should(tq));
+                    typeFilter.Add(or);
+                }
             }
 
             // filter by modified/changed
@@ -129,19 +141,26 @@ namespace HelloFacets
             if (typeVm != null)
             {
                 var rtvm = typeVm.Items.FindAll(i => i.IsChecked == true)
-                    .Select(item => item.Aggregation).OfType<Bucket>()
-                    .SelectMany(bucket => bucket.Items).OfType<RangeItem>()
-                    .Select(range => new FilterDescriptor<Document>()
-                        .Range(descriptor => descriptor
-                            .OnField(r => r.Changed)
-                            .Greater(range.From)
-                            .Lower(range.To)))
+                    .Select(item => item.Aggregation).OfType<BucketAggregate>()
+                    .SelectMany(bucket => bucket.Items).OfType<RangeBucket>()
+                    .Select(range => new QueryContainerDescriptor<Document>()
+                        .DateRange(descriptor => descriptor
+                            .Field(r => r.Changed)
+                            .GreaterThan(range.FromAsString)
+                            .LessThan(range.ToAsString)))
                     .ToArray();
-                if (rtvm.Any()) typeFilter.Add(new FilterDescriptor<Document>().Or(rtvm));
+
+                if (rtvm.Any())
+                {
+                    var or = new QueryContainerDescriptor<Document>()
+                        .Bool(b => b.Should(rtvm));
+                    typeFilter.Add(or);
+                }
             }
 
             if (!typeFilter.Any()) return sd;
-            return sd.Filter(descriptor => descriptor.And(typeFilter.ToArray()));
+
+            return sd.Query(d => d.Bool(b => b.Must(typeFilter.ToArray())));
         }
     }
 }

@@ -4,7 +4,7 @@ namespace HelloFacets
 {
     public class Document : IDocument
     {
-        public Guid Id { get; private set; }
+        public Guid Id { get; }
         public string Title { get; set; }
         public string Type { get; set; }
         public DateTime? Created { get; set; }
@@ -16,11 +16,11 @@ namespace HelloFacets
         public Document()
         {
             Id = Guid.NewGuid();
-            Title = String.Empty;
-            Type = String.Empty;
+            Title = string.Empty;
+            Type = string.Empty;
             Created = DateTime.UtcNow;
             Changed = DateTime.UtcNow;
-            Content = String.Empty;
+            Content = string.Empty;
             //TimeToLive = TimeSpan.FromDays(3); // default is specified in mapping
         }
     }

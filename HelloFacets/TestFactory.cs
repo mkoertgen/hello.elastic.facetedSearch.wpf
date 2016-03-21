@@ -1,31 +1,32 @@
 ﻿using System;
 using System.Globalization;
-using Elasticsearch.Net.Connection;
+using Elasticsearch.Net;
 using Nest;
 
 namespace HelloFacets.Tests
 {
-    static class TestFactory
+    internal static class TestFactory
     {
         private const string IndexName = "hello";
 
         public static IElasticClient CreateClient(bool purge=true)
         {
-            var settings = new ConnectionSettings(new Uri("http://localhost:9200"))
-                .SetDefaultIndex(IndexName)
-                .UsePrettyResponses();
+            var node = new Uri("http://localhost:9200");
+            var pool = new SingleNodeConnectionPool(node);
+            var settings = new ConnectionSettings(pool)
+                .DefaultIndex(IndexName)
+                .PrettyJson();
 
-            var connection = new HttpConnection(settings); // new InMemoryConnection(settings);
-            var client = CreateClient(settings, connection);
+            var client = CreateClient(settings);
 
             SetupIndexAndMapping(client, purge);
 
             return client;
         }
 
-        private static IElasticClient CreateClient(IConnectionSettingsValues settings, IConnection connection)
+        private static IElasticClient CreateClient(IConnectionSettingsValues settings)
         {
-            var client = new ElasticClient(settings, connection);
+            var client = new ElasticClient(settings);
             if (!client.RootNodeInfo().IsValid)
                 throw new InvalidOperationException("ElasticSearch root node is invalid. Please check your ElasticSearch Server");
             return client;
@@ -33,35 +34,35 @@ namespace HelloFacets.Tests
 
         private static void SetupIndexAndMapping(IElasticClient client, bool purge = false)
         {
-            if (client.IndexExists(i => i.Index(IndexName)).Exists)
+            if (client.IndexExists(IndexName).Exists)
             {
                 if (purge)
-                    client.DeleteIndex(i => i.Index(IndexName));
+                    client.DeleteIndex(IndexName);
                 else
                     return;
             }
 
-            client.CreateIndex(IndexName, s => s
-                .NumberOfReplicas(0)
-                .NumberOfShards(1)
-                // enable caching by default, cf.: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/index-modules-shard-query-cache.html
-                .Settings(dict => dict
-                    .Add("cache.query.enable", true)
+            client.CreateIndex(IndexName, c => c
+                .Settings(s => s
+                    .NumberOfReplicas(0)
+                    .NumberOfShards(1)
+                    .RequestCacheEnabled()
                 )
-                // add mapping for location to geo_point, cf.: http://markswanderingthoughts.nl/post/84327066530/geo-distance-searching-in-elasticserach-with-nest
-                .AddMapping<Document>(f => f
-                  .MapFromAttributes()
-                  .Properties(p => p
-                    .GeoPoint(g => g.Name(n => n.Location).IndexLatLon())
-                  )
-                  // enable default ttl, however cannot specify a field source for that
-                    // cf.: https://github.com/elasticsearch/elasticsearch-net/blob/develop/src/Tests/Nest.Tests.Unit/Core/Map/FluentMappingFullExampleTests.cs
-                  .TtlField(ttl => ttl.Enable().Default("10d"))
-                  // enable timestamp field
-                  .TimestampField(ts => ts.Enabled().Path(r => r.Changed))
+                .Mappings(map => map
+                    // add mapping for location to geo_point, cf.: http://markswanderingthoughts.nl/post/84327066530/geo-distance-searching-in-elasticserach-with-nest
+                    .Map<Document>(m => m
+                        .AutoMap()
+                        .Properties(p => p
+                            .GeoPoint(g => g.Name(n => n.Location).LatLon())
+                            )
+                        // enable default ttl, however cannot specify a field source for that
+                        // cf.: https://github.com/elasticsearch/elasticsearch-net/blob/develop/src/Tests/Nest.Tests.Unit/Core/Map/FluentMappingFullExampleTests.cs
+                        .TtlField(ttl => ttl.Enable().Default("10d"))
+                        // enable timestamp field
+                        .TimestampField(ts => ts.Enabled().Path(r => r.Changed))
+                    )
                 )
-              );
-
+            );
 
             // bulk indexing does not allow to specify ttl per document,
             // so we index each document individually

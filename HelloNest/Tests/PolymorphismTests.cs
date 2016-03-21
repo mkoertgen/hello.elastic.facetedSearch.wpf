@@ -1,17 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using Elasticsearch.Net.Connection;
+using Elasticsearch.Net;
 using FluentAssertions;
 using Nest;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using static Nest.Infer;
 
 namespace HelloNest.Tests
 {
 	// ReSharper disable InconsistentNaming
-	[TestFixture, Explicit]
-	class PolymorphismTests
+	[TestFixture]
+	internal class PolymorphismTests
 	{
 		private readonly IElasticClient _client = CreateClient();
 
@@ -51,75 +50,44 @@ namespace HelloNest.Tests
 
 			};
 
-		static IElasticClient CreateClient(IConnectionSettingsValues settings, IConnection connection)
+		private static IElasticClient CreateClient(IConnectionSettingsValues settings)
 		{
-			var client = new ElasticClient(settings, connection);
+			var client = new ElasticClient(settings);
 
 			client.RootNodeInfo().IsValid.Should().BeTrue();
+
 			IndexTestAlbums(client);
+
 			return client;
 
 		}
 
 		internal static IElasticClient CreateClient()
 		{
-			var settings = new ConnectionSettings(new Uri("http://localhost:9200"), "albums")
-				.UsePrettyResponses()
-				.AddContractJsonConverters(type =>
-										   {
-											   if (type == typeof(TrackList))
-												   return new JsonCreationConverter<TrackList>();
-											   return null;
-										   });
-			var connection = new HttpConnection(settings); // new InMemoryConnection(settings);
-			return CreateClient(settings, connection);
+			var node = new Uri("http://localhost:9200");
+
+			var connectionPool = new SingleNodeConnectionPool(node);
+
+			var settings = new ConnectionSettings(connectionPool, c => new TracklistJsonNetSerializer(c))
+				.DefaultIndex("albums")
+				.PrettyJson();
+
+			return CreateClient(settings);
 		}
 
-		private static void IndexTestAlbums(ElasticClient client)
+		private static void IndexTestAlbums(IElasticClient client)
 		{
+			if (!client.IndexExists(Indices<Album>()).Exists)
+				client.CreateIndex(Index<Album>(), c => c
+					.Mappings(map => map
+						.Map<Document>(m => m.AutoMap()))
+				);
+
 			// insert
 			var response = client.IndexMany(TestAlbums);
 			response.IsValid.Should().BeTrue();
 			response.Items.Should().NotBeEmpty();
-			response.Items.Should().OnlyContain(i => i.IsValid && !String.IsNullOrEmpty(i.Id));
-
-			// assert index exists / has been created
-			client.IndexExists(i => i.Index("albums")).Exists.Should().BeTrue();
-		}
-	}
-
-	public interface IHaveType { string Type { get; } }
-
-	public class JsonCreationConverter<T> : JsonConverter where T : IHaveType, new()
-	{
-		public override bool CanConvert(Type objectType) { return typeof(T).IsAssignableFrom(objectType); }
-
-		public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-		{
-			JObject jObject = JObject.Load(reader);
-
-			// Create target object based on JObject
-			T target = Create(objectType, jObject);
-
-			// Populate the object properties
-			serializer.Populate(jObject.CreateReader(), target);
-
-			return target;
-		}
-
-		private T Create(Type objectType, JObject jObject)
-		{
-			var typeName = (string)(jObject["type"] ?? objectType.AssemblyQualifiedName);
-			var type = Type.GetType(typeName) ?? typeof(T);
-			return (T)Activator.CreateInstance(type);
-		}
-
-
-		public override bool CanWrite { get { return false; } }
-
-		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-		{
-			throw new NotImplementedException();
+			response.Items.Should().OnlyContain(i => i.IsValid && !string.IsNullOrEmpty(i.Id));
 		}
 	}
 }

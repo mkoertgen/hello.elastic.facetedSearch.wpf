@@ -1,10 +1,10 @@
 ﻿using NUnit.Framework;
 
-namespace HelloFacets.Tests
+namespace HelloFacets
 {
     // ReSharper disable InconsistentNaming
     [TestFixture]
-    class AggregationsViewModel_Should
+    internal class AggregationsViewModel_Should
     {
         [Test]
         public void Raise_CheckedChanged_after_checking_r_unchecking_an_item()
