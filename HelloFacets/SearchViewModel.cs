@@ -117,10 +117,15 @@ namespace HelloFacets
             var typeVm = Aggregations.Items.FindFirst(itm => itm.Name == "Type");
             if (typeVm != null)
             {
-                var typeViewModels = typeVm
+                var typeAggs = typeVm
                     .Items.FindAll(i => i.IsChecked == true)
-                    .Select(item => item.Aggregation).OfType<KeyedValueAggregate>();
-                var terms = typeViewModels.SelectMany(t => t.Keys).ToArray();
+                    .Select(item => item.Aggregation).ToList();
+
+                var typeKeys = typeAggs.OfType<KeyedValueAggregate>().SelectMany(t => t.Keys);
+                var typeTerms = typeAggs.OfType<TermsAggregate>().SelectMany(t => t.Buckets.Select(k => k.Key));
+
+                var terms = typeKeys.Concat(typeTerms).ToList();
+
                 if (terms.Any())
                 {
                     var tq = new QueryContainerDescriptor<Document>()
@@ -139,10 +144,10 @@ namespace HelloFacets
                     .Select(item => item.Aggregation).OfType<BucketAggregate>()
                     .SelectMany(bucket => bucket.Items).OfType<RangeBucket>()
                     .Select(range => new QueryContainerDescriptor<Document>()
-                        .Range(descriptor => descriptor
+                        .DateRange(descriptor => descriptor
                             .Field(r => r.Changed)
-                            .GreaterThan(range.From)
-                            .LessThan(range.To)))
+                            .GreaterThan(range.FromAsString)
+                            .LessThan(range.ToAsString)))
                     .ToArray();
 
                 if (rtvm.Any())

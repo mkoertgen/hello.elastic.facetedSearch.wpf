@@ -223,20 +223,18 @@ namespace HelloFacets
         private static IEnumerable<AggregationViewModel> ToViewModel(this IEnumerable<IBucket> buckets)
         {
             if (buckets == null) return Enumerable.Empty<AggregationViewModel>();
-            var items = new List<AggregationViewModel>();
+            return buckets.OfType<BucketBase>().SelectMany(ToViewModel);
+        }
 
-            foreach (var bucket in buckets)
-            {
-                var kb = bucket as KeyedBucket;
-                if (kb != null)
-                    items.Add(kb.ToViewModel());
+        private static IEnumerable<AggregationViewModel> ToViewModel(this BucketBase bucketBase)
+        {
+            var kb = bucketBase as KeyedBucket;
+            if (kb != null) return new[] { kb.ToViewModel() };
 
-                var bucketBase = bucket as BucketBase;
-                if (bucketBase != null)
-                    items.AddRange(bucketBase.Aggregations.ToViewModel());
-            }
+            //var rb = bucketBase as RangeBucket;
+            //if (rb != null) return new[] { rb.ToViewModel() };
 
-            return items;
+            return bucketBase.Aggregations.ToViewModel();
         }
 
         private static AggregationViewModel ToViewModel(this KeyedBucket kb)
@@ -244,8 +242,20 @@ namespace HelloFacets
             return new AggregationViewModel
             {
                 Name = kb.Key,
+                Aggregation = new KeyedValueAggregate { Keys = new [] { kb.Key}},
                 DocCount = kb.GetDocCount(),
                 Items = kb.Aggregations.ToViewModel()
+            };
+        }
+
+        private static AggregationViewModel ToViewModel(this RangeBucket rb)
+        {
+            return new AggregationViewModel
+            {
+                Name = rb.Key,
+                Aggregation = new KeyedValueAggregate { Keys = new[] { rb.Key } },
+                DocCount = rb.GetDocCount(),
+                Items = rb.Aggregations.ToViewModel()
             };
         }
     }
